@@ -29,13 +29,6 @@ app.debug = True
 
 clients = list()
 
-def send_all(msg):
-    for client in clients:
-        client.put( msg )
-
-def send_all_json(obj):
-    send_all( json.dumps(obj) )
-
 class Client:
     def __init__(self):
         self.queue = queue.Queue()
@@ -48,9 +41,8 @@ class Client:
 
 class World:
     def __init__(self):
-        self.clear()
-        # we've got listeners now!
         self.listeners = list()
+        self.clear()
         
     def add_set_listener(self, listener):
         self.listeners.append( listener )
@@ -66,13 +58,12 @@ class World:
         self.update_listeners( entity )
 
     def update_listeners(self, entity):
-        '''update the set listeners'''
         for listener in self.listeners:
             listener(entity, self.get(entity))
             
-
     def clear(self):
         self.space = dict()
+        self.update_listeners(self.world())
 
     def get(self, entity):
         return self.space.get(entity,dict())
@@ -83,12 +74,10 @@ class World:
 myWorld = World()        
 
 def set_listener( entity, data ):
-    ''' do something with the update ! '''
-    print('here')
-    # data = flask_post_json()
-    # for key, value in data.item():
-    #     myWorld.update(entity, key, value)
-    
+    packet = json.dumps({entity:data})
+    for client in clients:
+        # print('set_listener')
+        client.put(packet)
 
 myWorld.add_set_listener( set_listener )
         
@@ -97,34 +86,34 @@ def hello():
     return flask.redirect('static/index.html')
 
 def read_ws(ws,client):
-    '''A greenlet function that reads from the websocket and updates the world'''
     try:
         while True:
             msg = ws.receive()
-            print("Message", msg)
-            myWorld.update_listeners(flask.jsonify(msg))
-            if(msg is not None):
-                pack = json.loads(msg)
-                send_all_json(pack)
+            # print("WS RECV: %s" % msg)
+            if (msg is not None):
+                data = json.loads(msg)
+                for entity in data:
+                    myWorld.set(entity,data[entity])
             else:
                 break
-    except:
-        '''Done'''
+    except Exception as e:
+        print("READ_WS ERROR:",e)
+    return None
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws):
-    '''Fufill the websocket URL of /subscribe, every update notify the
-       websocket and read updates from the websocket '''
     client = Client()
     clients.append(client)
     q = gevent.spawn(read_ws, ws, client)
     try:
+        data = json.dumps(myWorld.world())
+        ws.send(data)
         while True:
             msg = client.get()
+            # print('subscribed',msg)
             ws.send(msg)
-            myWorld.update_listeners(msg)
     except Exception as e:
-        print("Error:",e)
+        print("SUBSCRIBE ERROR:",e)
     finally:
         clients.remove(client)
         gevent.kill(q)
@@ -162,9 +151,4 @@ def clear():
 
 
 if __name__ == "__main__":
-    ''' This doesn't work well anymore:
-        pip install gunicorn
-        and run
-        gunicorn -k flask_sockets.worker sockets:app
-    '''
     app.run()

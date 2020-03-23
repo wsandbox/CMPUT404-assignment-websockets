@@ -3,6 +3,8 @@ CMPUT404-assignment-websockets
 
 CMPUT404-assignment-websockets
 
+Warren Thomas (1399042)
+
 See requirements.org (plain-text) for a description of the project.
 
 Make a shared state Websockets drawing program
@@ -19,6 +21,18 @@ pip install -r requirements.txt
 
 Contributors / Licensing
 ========================
+
+Acknowledgements:
+========================
+  
+  Abram Hindle [https://github.com/uofa-cmput404/cmput404-slides/blob/master/examples/WebSocketsExamples/chat.py]
+
+
+Collaboration:
+========================
+
+  Noah Kryzanowski
+  Daniel Cones 
 
 Generally everything is LICENSE'D under the Apache 2 license by Abram Hindle.
 
